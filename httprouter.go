@@ -14,11 +14,12 @@ type Handler func(w http.ResponseWriter, r *http.Request) error
 // Router is a thin wrapper around http.ServeMux that allows for registering
 // handlers with middleware for different HTTP methods and patterns.
 type Router struct {
-	m *http.ServeMux
 	// NotFoundHandler is the handler to call when the router receives a
 	// request for a path that is not registered with any handler. Defaults to
 	// http.NotFoundHandler.
 	NotFoundHandler http.Handler
+
+	m *http.ServeMux
 }
 
 // New returns a new HTTP Router.
