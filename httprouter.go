@@ -51,6 +51,31 @@ func (r *Router) Handle(method, pattern string, h Handler, mw ...Middleware) {
 	})
 }
 
+// Delete is a shorthand for r.Handle("DELETE", pattern, h, mw...).
+func (r *Router) Delete(pattern string, h Handler, mw ...Middleware) {
+	r.Handle(http.MethodDelete, pattern, h, mw...)
+}
+
+// Get is a shorthand for r.Handle("GET", pattern, h, mw...).
+func (r *Router) Get(pattern string, h Handler, mw ...Middleware) {
+	r.Handle(http.MethodGet, pattern, h, mw...)
+}
+
+// Patch is a shorthand for r.Handle("PATCH", pattern, h, mw...).
+func (r *Router) Patch(pattern string, h Handler, mw ...Middleware) {
+	r.Handle(http.MethodPatch, pattern, h, mw...)
+}
+
+// Post is a shorthand for r.Handle("POST", pattern, h, mw...).
+func (r *Router) Post(pattern string, h Handler, mw ...Middleware) {
+	r.Handle(http.MethodPost, pattern, h, mw...)
+}
+
+// Put is a shorthand for r.Handle("PUT", pattern, h, mw...).
+func (r *Router) Put(pattern string, h Handler, mw ...Middleware) {
+	r.Handle(http.MethodPut, pattern, h, mw...)
+}
+
 // Group returns a new sub-router with the given pattern prefix and middleware.
 // Stacks middleware on top of the global middleware. By default the returned
 // router use the same NotFoundHandler as the parent router. If the parent
