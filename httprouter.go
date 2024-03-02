@@ -29,10 +29,9 @@ func New() *Router {
 
 // Handle registers a new handler with given method and path pattern. Responds
 // to the client with a 500 status code if the handler returns an error. Use
-// r.PathValue() in given Handler to retrieve path parameters from the request.
+// [http.Request.PathValue] to retrieve path parameters from the request.
 //
-// See https://pkg.go.dev/net/http#ServeMux for more details regarding pattern
-// matching, precedence, etc.
+// Refer to [http.ServeMux] for how pattern matching, precedence, etc. works.
 func (r *Router) Handle(method, pattern string, h Handler, mw ...Middleware) {
 	h = wrapMiddleware(mw, h)
 	r.m.HandleFunc(fmt.Sprintf("%s %s", method, pattern), func(w http.ResponseWriter, req *http.Request) {
