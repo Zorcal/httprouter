@@ -19,8 +19,9 @@ type Router struct {
 	// http.NotFoundHandler.
 	NotFoundHandler http.Handler
 
-	mw []Middleware
-	m  *http.ServeMux
+	mw            []Middleware
+	patternPrefix string
+	m             *http.ServeMux
 }
 
 // New returns a new HTTP Router. Middleware are executed in the order they are
@@ -43,11 +44,25 @@ func New(mw ...Middleware) *Router {
 func (r *Router) Handle(method, pattern string, h Handler, mw ...Middleware) {
 	h = wrapMiddleware(mw, h)
 	h = wrapMiddleware(r.mw, h)
-	r.m.HandleFunc(fmt.Sprintf("%s %s", method, pattern), func(w http.ResponseWriter, req *http.Request) {
+	r.m.HandleFunc(fmt.Sprintf("%s %s", method, r.patternPrefix+pattern), func(w http.ResponseWriter, req *http.Request) {
 		if err := h(w, req); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	})
+}
+
+// Group returns a new sub-router with the given pattern prefix and middleware.
+// Stacks middleware on top of the global middleware. By default the returned
+// router use the same NotFoundHandler as the parent router. If the parent
+// router is also a sub-router, the final pattern prefix is the concatenation
+// of the parent and child pattern prefixes.
+func (r *Router) Group(patternPrefix string, mw ...Middleware) *Router {
+	return &Router{
+		NotFoundHandler: r.NotFoundHandler,
+		mw:              append(r.mw, mw...),
+		patternPrefix:   r.patternPrefix + patternPrefix,
+		m:               r.m,
+	}
 }
 
 // ServeHTTP implements the http.Handler interface.

@@ -11,48 +11,62 @@ import (
 	"github.com/zorcal/httprouter"
 )
 
-func TestMiddleware(t *testing.T) {
+func TestRouter(t *testing.T) {
 	buf := bytes.Buffer{}
-	defer buf.Reset()
 
 	globalMw := func(h httprouter.Handler) httprouter.Handler {
 		return func(w http.ResponseWriter, r *http.Request) error {
-			buf.WriteString("0")
+			buf.WriteString("global.")
+			return h(w, r)
+		}
+	}
+	groupMw := func(h httprouter.Handler) httprouter.Handler {
+		return func(w http.ResponseWriter, r *http.Request) error {
+			buf.WriteString("group.")
 			return h(w, r)
 		}
 	}
 	firstMw := func(h httprouter.Handler) httprouter.Handler {
 		return func(w http.ResponseWriter, r *http.Request) error {
-			buf.WriteString("1")
+			buf.WriteString("first.")
 			return h(w, r)
 		}
 	}
 	secondMw := func(h httprouter.Handler) httprouter.Handler {
 		return func(w http.ResponseWriter, r *http.Request) error {
-			buf.WriteString("2")
+			buf.WriteString("second.")
 			return h(w, r)
 		}
 	}
 
 	h := func(w http.ResponseWriter, r *http.Request) error {
-		buf.WriteString("3")
+		buf.WriteString("handler")
 		return nil
 	}
 
 	r := httprouter.New(globalMw)
 	r.Handle(http.MethodGet, "/{$}", h, firstMw, secondMw)
 
+	api := r.Group("/group", groupMw)
+	api.Handle(http.MethodGet, "/{$}", h, firstMw, secondMw)
+
 	srv := httptest.NewServer(r)
 
 	if _, err := srv.Client().Get(srv.URL + "/"); err != nil {
 		t.Fatalf("issue GET /: %v", err)
 	}
-
-	got := buf.String()
-	want := "0123"
-	if got != want {
+	if got, want := buf.String(), "global.first.second.handler"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
+	buf.Reset()
+
+	if _, err := srv.Client().Get(srv.URL + "/group"); err != nil {
+		t.Fatalf("issue GET /group: %v", err)
+	}
+	if got, want := buf.String(), "global.group.first.second.handler"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	buf.Reset()
 }
 
 func TestNotFoundHandler(t *testing.T) {
@@ -93,4 +107,26 @@ func TestNotFoundHandler(t *testing.T) {
 		})
 		test(t, r, "custom 404 page not found\n")
 	})
+}
+
+func TestNestedGroups(t *testing.T) {
+	r := httprouter.New()
+	group1 := r.Group("/group1")
+	group11 := group1.Group("/group11")
+
+	group11.Handle(http.MethodGet, "/destination", func(w http.ResponseWriter, r *http.Request) error {
+		return nil
+	})
+
+	srv := httptest.NewServer(r)
+
+	resp, err := srv.Client().Get(srv.URL + "/group1/group11/destination")
+	if err != nil {
+		t.Fatalf("issue GET /group1/group11/destination: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("got status code %d, want %d", resp.StatusCode, http.StatusOK)
+	}
 }
