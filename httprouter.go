@@ -1,5 +1,6 @@
-// Package httprouter is a thin wrapper around http.ServeMux with support
-// for middleware and a custom handler type that returns an error.
+// Package httprouter is a thin wrapper around http.ServeMux with support for
+// middleware and router groups. Defines a custom handler type that returns an
+// error.
 package httprouter
 
 import (
