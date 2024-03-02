@@ -15,8 +15,12 @@ func TestMiddleware(t *testing.T) {
 	buf := bytes.Buffer{}
 	defer buf.Reset()
 
-	r := httprouter.New()
-
+	globalMw := func(h httprouter.Handler) httprouter.Handler {
+		return func(w http.ResponseWriter, r *http.Request) error {
+			buf.WriteString("0")
+			return h(w, r)
+		}
+	}
 	firstMw := func(h httprouter.Handler) httprouter.Handler {
 		return func(w http.ResponseWriter, r *http.Request) error {
 			buf.WriteString("1")
@@ -29,10 +33,13 @@ func TestMiddleware(t *testing.T) {
 			return h(w, r)
 		}
 	}
+
 	h := func(w http.ResponseWriter, r *http.Request) error {
 		buf.WriteString("3")
 		return nil
 	}
+
+	r := httprouter.New(globalMw)
 	r.Handle(http.MethodGet, "/{$}", h, firstMw, secondMw)
 
 	srv := httptest.NewServer(r)
@@ -42,7 +49,7 @@ func TestMiddleware(t *testing.T) {
 	}
 
 	got := buf.String()
-	want := "123"
+	want := "0123"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}

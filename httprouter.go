@@ -19,21 +19,30 @@ type Router struct {
 	// http.NotFoundHandler.
 	NotFoundHandler http.Handler
 
-	m *http.ServeMux
+	mw []Middleware
+	m  *http.ServeMux
 }
 
-// New returns a new HTTP Router.
-func New() *Router {
-	return &Router{m: http.NewServeMux(), NotFoundHandler: http.NotFoundHandler()}
+// New returns a new HTTP Router. Middleware are executed in the order they are
+// provided and before any handler-specific middleware.
+func New(mw ...Middleware) *Router {
+	return &Router{
+		NotFoundHandler: http.NotFoundHandler(),
+		mw:              mw,
+		m:               http.NewServeMux(),
+	}
 }
 
-// Handle registers a new handler with given method and path pattern. Responds
-// to the client with a 500 status code if the handler returns an error. Use
-// [http.Request.PathValue] to retrieve path parameters from the request.
+// Handle registers a new handler with given method and path pattern.
+// Middleware are exectued in the order they are provided and after any global
+// middleware. Responds to the client with a 500 status code if the handler
+// returns an error. Use [http.Request.PathValue] to retrieve path parameters
+// from the request.
 //
 // Refer to [http.ServeMux] for how pattern matching, precedence, etc. works.
 func (r *Router) Handle(method, pattern string, h Handler, mw ...Middleware) {
 	h = wrapMiddleware(mw, h)
+	h = wrapMiddleware(r.mw, h)
 	r.m.HandleFunc(fmt.Sprintf("%s %s", method, pattern), func(w http.ResponseWriter, req *http.Request) {
 		if err := h(w, req); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
