@@ -1,6 +1,7 @@
 package httprouter_test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,43 @@ import (
 
 	"github.com/zorcal/httprouter"
 )
+
+func TestMiddleware(t *testing.T) {
+	buf := bytes.Buffer{}
+	defer buf.Reset()
+
+	r := httprouter.New()
+
+	firstMw := func(h httprouter.Handler) httprouter.Handler {
+		return func(w http.ResponseWriter, r *http.Request) error {
+			buf.WriteString("1")
+			return h(w, r)
+		}
+	}
+	secondMw := func(h httprouter.Handler) httprouter.Handler {
+		return func(w http.ResponseWriter, r *http.Request) error {
+			buf.WriteString("2")
+			return h(w, r)
+		}
+	}
+	h := func(w http.ResponseWriter, r *http.Request) error {
+		buf.WriteString("3")
+		return nil
+	}
+	r.Handle(http.MethodGet, "/{$}", h, firstMw, secondMw)
+
+	srv := httptest.NewServer(r)
+
+	if _, err := srv.Client().Get(srv.URL + "/"); err != nil {
+		t.Fatalf("issue GET /: %v", err)
+	}
+
+	got := buf.String()
+	want := "123"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
 
 func TestNotFoundHandler(t *testing.T) {
 	test := func(t *testing.T, r *httprouter.Router, wantBody string) {
