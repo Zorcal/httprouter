@@ -15,11 +15,15 @@ type Handler func(w http.ResponseWriter, r *http.Request) error
 // handlers with middleware for different HTTP methods and patterns.
 type Router struct {
 	m *http.ServeMux
+	// NotFoundHandler is the handler to call when the router receives a
+	// request for a path that is not registered with any handler. Defaults to
+	// http.NotFoundHandler.
+	NotFoundHandler http.Handler
 }
 
 // New returns a new HTTP Router.
 func New() *Router {
-	return &Router{m: http.NewServeMux()}
+	return &Router{m: http.NewServeMux(), NotFoundHandler: http.NotFoundHandler()}
 }
 
 // Handle registers a new handler with given method and path pattern. Responds
@@ -39,5 +43,9 @@ func (r *Router) Handle(method, pattern string, h Handler, mw ...Middleware) {
 
 // ServeHTTP implements the http.Handler interface.
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	r.m.ServeHTTP(w, req)
+	if _, pattern := r.m.Handler(req); pattern == "" {
+		r.NotFoundHandler.ServeHTTP(w, req)
+	} else {
+		r.m.ServeHTTP(w, req)
+	}
 }
